@@ -1,6 +1,7 @@
-from models import *
 import db
 import os
+
+from models import *
 
 if __name__ == "__main__":
     path = SQLITE3_NAME
@@ -23,7 +24,7 @@ if __name__ == "__main__":
     task = Task(
         user_id=admin.id,
         content='〇〇の締め切り',
-        deadline=datetime(2019, 12, 25, 12, 00, 00),
+        deadline=datetime(2019, 12, 26, 12, 00, 00),
     )
     print(task)
     # 追加

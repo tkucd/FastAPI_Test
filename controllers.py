@@ -3,8 +3,13 @@ import hashlib
 import re
 
 from models import User, Task
+from mycalendar import MyCalendar
+
+from datetime import datetime, timedelta
+
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+
 from starlette.templating import Jinja2Templates
 from starlette.requests import Request
 from starlette.status import HTTP_401_UNAUTHORIZED
@@ -31,9 +36,12 @@ def admin(request: Request, credentials: HTTPBasicCredentials = Depends(sequrity
     username = credentials.username
     password = hashlib.md5(credentials.password.encode()).hexdigest()
 
+    # 今日の日付と来週の日付
+    today = datetime.now()
+    next_w = today + timedelta(days=7)
+
     # データベースからユーザ名が一致するデータを取得
     user = db.session.query(User).filter(User.username == username).first()
-    task = db.session.query(Task).filter(Task.user_id == user.id).all() if user is not None else []
     db.session.close()
 
     # 該当ユーザがいない場合
@@ -45,12 +53,30 @@ def admin(request: Request, credentials: HTTPBasicCredentials = Depends(sequrity
             headers={"WWW-Authenticate": "Basic"},
         )
 
+    task = db.session.query(Task).filter(Task.user_id == user.id).all() if user is not None else []
+    db.session.close()
+
+    # カレンダーをHTML形式で取得
+    cal = MyCalendar(
+        username,
+        {t.deadline.strftime('%Y%m%d'): t.done for t in task}
+    )
+
+    cal = cal.formatyear(today.year, 4)
+
+    # 直近のタスクだけでいいので、リストを書き換える
+    task = [t for t in task if today <= t.deadline <= next_w]
+    links = [t.deadline.strftime('/todo/'+username+'/%Y/%m/%d') for t in task]
+
     # 特に問題がなければ管理者ページへ
     return templates.TemplateResponse(
         'admin.html',
         {'request': request,
          'user': user,
-         'task': task})
+         'task': task,
+         'links': links,
+         'calender': cal}
+    )
 
 # 任意の4~20の英数字を示す正規表現
 pattern = re.compile(r'\w{4,20}')
@@ -113,3 +139,13 @@ async def register(request: Request):
             {'request': request,
              'username': username}
         )
+    
+def detail(request: Request, username, year, month, day):
+    return templates.TemplateResponse(
+        'detail.html',
+        {'request': request,
+         'username': username,
+         'year': year,
+         'month': month,
+         'day': day}
+    )
