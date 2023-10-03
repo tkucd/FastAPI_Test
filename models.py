@@ -75,12 +75,6 @@ class Task(Base):
     )
 
     user_id = Column(
-        'user_id',
-        ForeignKey('user.id'),
-        nullable=False,
-    )
-
-    user_id = Column(
         'user_id', 
         ForeignKey('user.id'),
     )
